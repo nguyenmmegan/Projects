@@ -1,0 +1,330 @@
+---
+title: "Algae Blooms"
+author: "Megan Nguyen"
+date: "8/29/2018"
+output: html_document
+---
+Predicting Algae Blooms
+Background High concentrations of certain harmful algae in rivers constitute a serious ecological problem with a strong impact not only on river lifeforms, but also on water quality. Being able to monitor and perform an early forecast of algae blooms is essential to improving the quality of rivers.
+With the goal of addressing this prediction problem, several water samples were collected in different European rivers at different times during a period of approximately 1 year. For each water sample, different chemical properties were measured as well as the frequency of occurrence of seven harmful algae. Some other characteristics of the water collection process were also stored, such as the season of the year, the river size,
+and the river speed.
+Goal We want to understand how these frequencies are related to certain chemical attributes of water samples as well as other characteristics of the samples (like season of the year, type of river, etc.)
+Data Description The data set consists of data for 200 water samples and each observation in the available datasets is in effect an aggregation of several water samples collected from the same river over a period of 3 months, during the same season of the year. Each observation contains information on 11 variables. Three of these variables are nominal and describe the season of the year when the water samples to be aggregated were collected, as well as the size and speed of the river in question. The eight remaining variables are values of different chemical parameters measured in the water samples forming the aggregation, namely: Maximum pH value, Minimum value of O2 (oxygen), Mean value of Cl (chloride), Mean value of NO3 (nitrates), Mean value of NH+4 (ammonium), Mean of P O34 (orthophosphate), Mean of total P O4 (phosphate) and Mean of chlorophyll. Associated with each of these parameters are seven frequency numbers of different harmful algae found in the respective water samples. No information is given regarding the names of the algae that were identified. We can start the analysis by loading into R the data from the "algaeBloom.txt" file (the training data, ie. the data that will be used to obtain the predictive models).  To read the data from the file, we issued the following command:
+```{r}
+library(tidyverse)
+algae <- read_table2("https://piazza-resources.s3.amazonaws.com/jf74s6w1gwj2k4/jfpzcisp1bc5v6/algaeBloom.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ASIAR6AWVCBX3LREATCM%2F20180829%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20180829T222425Z&X-Amz-Expires=10800&X-Amz-SignedHeaders=host&X-Amz-Security-Token=FQoGZXIvYXdzEML%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaDB%2F5fWcLHOHaUMdV2iK3A%2BjKW0k%2FTcycTfpxR0C%2B2Yb%2F8hDRJpxqB2V64%2B4Ln3DB%2FAbuaTiPoQtXvuMZs8%2F6Gz5en4vlNHxJG5DEEmSNl9l86Lzv%2FGO9WIo7zPQXzZAtND4W8918ii0xI178wSyvhzD9wTnmZoECy50N35UBjEFjdSanq%2F8mp42zOKnzFJyAAm3N6ppF38D6roYo6s10qsKPWwu9FPUsEzma%2FbpEYKcwtYkOG0CsjNCGYq1Eo7RcHz43GmJP9YPR6c50wwb7lK89WYiJgTJN0J8Ov4tUBugkM1vcZ6nJPFPCOshddJKxtacpza9qdhNWWlWfCP2BEUvf03Iy16z1y78GtL7P4maKswbeUAZSCzbJ6ZjVbaZYQArP9emP%2F52QFDq%2FqvV0H7y5Ct%2BG6rZJv8py8v87rIs6ddv7oaK5LGAuai2nzKWq0F3XzqxJecSWPXMDhN%2Fgst8PTPcLFhKJ%2B%2Be75UwMFzTosRkE%2F56LKDyL25Li98TXZLBcKEnQKdnlcpr0159dIMSFlFuSvvv4yadEocbo%2BGJ46jFB3pMbq9%2BnUI4U2PiTarh%2BPDdei511jBFwY8QzWyJheHDFf4ko1p2b3AU%3D&X-Amz-Signature=f7eece1dbbada14762052e1c6e6e3914ba55b751f3f3c1a8648a41bfeac9dc51", 
+                     col_name = c("season", "size", "speed", "mxPH", "mn02", "Cl", "NO3", "NH4", "oPO4", "PO4", "Chla", "a1", "a2", "a3", "a4", "a5", "a6", "a7"),
+                     na = "XXXXXXX")
+
+glimpse(algae) #Glimpse column information
+```
+
+Descriptive summary statistics 
+
+Given the lack of further information on the problem domain, it is wise to investigate some of the statistical properties of the data, so as to get a better grasp of the problem. It is always a good idea to start our analysis with some kind of exploratory data analysis. A first idea of the statistical properties of the data can be obtained through a summary of its descriptive statistics.
+a) 
+```{r}
+algae %>%
+  group_by(season) %>% #group by season
+  summarise(n()) #count number of observations in each group (season)
+```
+We can see the number of observations in each season.
+
+b)
+```{r}
+anyNA(algae)
+```
+Using anyNA, we can see that there are missing values in this dataset.
+
+```{r}
+algae %>% 
+  select(mxPH:Chla) %>% #select all chemicals
+  summarise_all(funs(mean, var), na.rm = TRUE) #applies to all non-grouping columns
+```
+Here we calculate the mean and variance of each chemical (not including a1 through a7).  We can see that the variance tends to be larger when the mean is larger.  
+
+c) Mean and Variance is one measure of central tendency and spread of data. Median and Median Absolute Deviation are alternative measures of central tendency and spread. For a univariate data set X1, X2, ..., Xn, the Median Absolute Deviation (MAD) is defined as the median of the absolute deviations from the data’s median:
+MAD = median(|Xi - median(X)|)
+```{r}
+#median
+algae %>%
+  select(mxPH:Chla) %>%
+  summarise_all(funs(median, mad), na.rm = TRUE) 
+
+
+```
+The median and the MAD are relatively close to each other compared to the mean/var difference in part b
+
+
+Data visualization
+Most of the time, the information in the data set is also well captured graphically. Histogram, scatter plot, boxplot, Q-Q plot are frequently used tools for data visualization. We use ggplot for all of these visualizations.
+
+a) We produce a histogram of mxPH.  We can see that the distribution is right-skewed
+```{r}
+ggplot(algae) +
+  geom_histogram(aes(mxPH, ..density..)) + 
+  ggtitle("Histogram of mxPH")
+```
+
+b) Here we add a density curve and rug plot to the histogram to illustrate the marginal distribution of the data.
+```{r}
+ggplot(algae) +
+  geom_histogram(aes(mxPH, ..density..)) + 
+  geom_density(aes(mxPH, ..density..)) +
+  geom_rug(aes(mxPH)) + 
+  ggtitle("Histogram of mxPH")
+```
+
+c) We create a boxplot of a1 grouped by size
+```{r}
+ggplot(algae) + 
+  geom_boxplot(aes(size, a1)) +
+  ggtitle("A conditioned Boxplot of Algae a1")
+```
+
+d) Here we observe the NO3 and NH4 chemicals
+
+```{r}
+##Part d
+qplot(algae$NO3)
+```
+
+NO3 has one outlier
+```{r}
+qplot(algae$NH4)
+```
+
+NH4 has one outlier
+
+(e) Compare mean & variance vs. median & MAD for NO3 and NH4. What do you notice? Can you
+conclude which set of measures is more robust when outliers are present?
+```{r}
+#Part d
+# Mean and variance fo NO3 and NH4
+algae %>%
+  select(NO3, NH4) %>%
+  summarise_all(funs(mean, var), na.rm = TRUE)
+
+```
+
+```{r}
+algae %>%
+  select(NO3, NH4) %>%
+  summarise_all(funs(median, mad), na.rm = TRUE)
+```
+
+We can see that the median and MAD values are more robust because they are less sensitive to outliers than the mean and variance
+
+
+Predicting Algae Blooms
+Some water samples contained unknown values in several chemicals. Missing data are very common in real-world problems, and may prevent the use of certain data mining techniques that are not able to handle missing values.
+We are going to introduce various ways to deal with missing values. After all the missing values have been taken care of, we will build a model to investigate the relationship between the variable a1 and other 11 predictors (season, size, speed, mxPH, mnO2, Cl, NO3, NH4, oPO4, PO4, Chla) utilizing
+cross-validation in the next problem.
+
+Dealing with missing values
+
+a)
+```{r}
+remove_na <- na.omit(algae)
+str(remove_na)
+```
+
+There are 16 observations in missing values
+
+```{r}
+algae %>%
+  summarise_all(funs(sum(is.na(.))))
+```
+
+We can see how many missing values there are for each variable.
+
+b) Removing observations with missing values
+```{r}
+algae.del <- algae %>%
+  filter(complete.cases(algae) == TRUE)
+
+str(algae.del)
+```
+There are 184 observations in algae.del
+
+c) Imputing unknowns with measures of central tendency
+
+The simplest and fastest way of filling in (imputing) missing values is to use some measures of central tendency such as mean, median and mode.
+Here we fill in missing values for each chemical with its median, save the imputed dataset as algae.med, and display the values of each chemical for the 48th, 62th and 199th obsevation in algae.med. This simple strategy, although extremely fast and thus appealing for large datasets, imputed values may have large bias that can influence our model fitting. An alternative for decreasing bias of imputed values is to use relationships between variables.
+
+```{r}
+##Part c
+medians <- algae%>%
+  select(mxPH:Chla) %>%
+  summarise_all(funs(median), na.rm = TRUE)
+
+algae.med <- algae %>%
+  mutate_at(.vars = vars(mxPH:Chla),
+            .funs = funs(ifelse(is.na(.), median(., na.rm = TRUE), .)))
+algae.med[c(48, 62, 199), c(4:11)]
+```
+
+(d) Imputing unknowns using correlations: another way to impute missing values is to use correlation with another variable. For a highly correlated pair of variables, we can fill in the unknown values by predicting one based on the other with a simple linear regression model, provided the two variables are not both unknown.  We compute pairwise correlation between all variables and fill in the missing value for PO4 based on oPO4 in the 28th observation. 
+```{r}
+#Part d
+cor(algae[4:11], use = "complete.obs")
+fit <- lm(algae.med$PO4 ~ algae$oPO4)
+fit
+
+PO4_predict <- predict(fit)
+PO4_predict[28]
+```
+
+e) Questioning missing data assumptions: When might imputation using only the observed
+data lead you to incorrect conclusions? 
+To predict the data, we used lm() which uses a linear model of the data, however, we cannot always assume that it fits the data well.
+
+4. Cross-validation: in class we talked about how to use cross-validation (CV) to estimate the “test error”. In k-fold CV, each of k equally sized random~ partitions of data (chunks) are used in a heldout set (called validation set or test set). After k runs, we average the held-out error as our final estimate of the validation error. For this part, we will run cross-validation on only a single model, as a way to estimate our test error for future predictions (we are not using it here for model selection since we are considering only one model). We perform a 5-fold cross-validation on this model to estimate the (average) test error.
+(a) First randomly partition data into 5 equal sized chunks.
+```{r}
+#Part a
+chunks <- sample(cut(1:200, breaks = 5, label = FALSE))
+chunks
+```
+
+(b) Perform 5-fold cross-validation with training error and validation errors of each chunk determined from (4a). Since same computation is repeated 5 times, we can define the following function for simplicity. First argument chunkid indicates which chunk to use as validation set (one of 1:5). Second argument chunkdef is chunk assignments from (4a). Third argument data will be algae.med dataset. In order to repeatedly call do.chunk() for each value of chunkid, use functions lapply() or ldply(). 
+```{r}
+#Part b
+do.chunk <- function(chunkid, chunkdef, dat){ # function argument
+train = (chunkdef != chunkid)
+Xtr = dat[train,1:11] # get training set
+Ytr = dat[train,12] # get true response values in trainig set
+Xvl = dat[!train,1:11] # get validation set
+Yvl = dat[!train,12] # get true response values in validation set
+3
+lm.a1 <- lm(a1~., data = dat[train,1:12])
+predYtr = predict(lm.a1) # predict training values
+predYvl = predict(lm.a1,Xvl) # predict validation values
+data.frame(fold = chunkid,
+train.error = mean((predYtr - Ytr)^2), # compute and store training error
+val.error = mean((predYvl - Yvl)^2)) # compute and store test error
+}
+
+```
+
+```{r}
+library(plyr)
+cv <- ldply(1:5, do.chunk, chunks, algae.med)
+cv
+```
+
+5. Test error on additional data: now imagine that you actually get new data that wasn’t available when you first fit the model.
+(a) Additional data can be found in the file algaeTest.txt.
+This data was not used to train the model and was not (e.g. wasn’t used in the CV procedure to estimate the test error). We can get a more accurate measure of true test error by evaluating the model fit on this held out set of data. We calculate
+the “true” test error of our predictions based on the newly collected measurements in algaeTest.txt. 
+```{r}
+algae.Test <- read_table2("https://piazza-resources.s3.amazonaws.com/jf74s6w1gwj2k4/jfpzcilqbkf5v1/algaeTest.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ASIAR6AWVCBX3LREATCM%2F20180829%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20180829T222501Z&X-Amz-Expires=10800&X-Amz-SignedHeaders=host&X-Amz-Security-Token=FQoGZXIvYXdzEML%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaDB%2F5fWcLHOHaUMdV2iK3A%2BjKW0k%2FTcycTfpxR0C%2B2Yb%2F8hDRJpxqB2V64%2B4Ln3DB%2FAbuaTiPoQtXvuMZs8%2F6Gz5en4vlNHxJG5DEEmSNl9l86Lzv%2FGO9WIo7zPQXzZAtND4W8918ii0xI178wSyvhzD9wTnmZoECy50N35UBjEFjdSanq%2F8mp42zOKnzFJyAAm3N6ppF38D6roYo6s10qsKPWwu9FPUsEzma%2FbpEYKcwtYkOG0CsjNCGYq1Eo7RcHz43GmJP9YPR6c50wwb7lK89WYiJgTJN0J8Ov4tUBugkM1vcZ6nJPFPCOshddJKxtacpza9qdhNWWlWfCP2BEUvf03Iy16z1y78GtL7P4maKswbeUAZSCzbJ6ZjVbaZYQArP9emP%2F52QFDq%2FqvV0H7y5Ct%2BG6rZJv8py8v87rIs6ddv7oaK5LGAuai2nzKWq0F3XzqxJecSWPXMDhN%2Fgst8PTPcLFhKJ%2B%2Be75UwMFzTosRkE%2F56LKDyL25Li98TXZLBcKEnQKdnlcpr0159dIMSFlFuSvvv4yadEocbo%2BGJ46jFB3pMbq9%2BnUI4U2PiTarh%2BPDdei511jBFwY8QzWyJheHDFf4ko1p2b3AU%3D&X-Amz-Signature=96d12bbb9cecb4f6910418eda4b7a66b7dd7f5b9c23856ad714f36da9a945bd3",
+                     col_names=c("season","size","speed","mxPH","mnO2","Cl","NO3","NH4","oPO4","PO4","Chla","a1"),
+                     na = "XXXXXXX")
+```
+```{r}
+chunks.test <- sample(cut(1:140, breaks = 5, label = FALSE))
+chunks.test
+
+cv.test <- ldply(1:5, do.chunk, chunks.test, algae.Test)
+cv.test
+```
+
+6. First, install the ISLR package, which includes many of the datasets used in the ISLR textbook. Look at the variables defined in the Wage dataset. We will be using the wage and age variables for this problem.
+
+(a) We plot wages as a function of age using ggplot. 
+```{r}
+library(ISLR)
+head(Wage)
+```
+
+```{r}
+#Part a
+library(ggplot2)
+ggplot(Wage, aes(x = age, y = wage, na.rm = TRUE)) +
+  geom_point() + 
+  geom_smooth()
+```
+People in their late teens to around age 35, we can see an increase in wage as a function of age.  After 35 to 65, the average wage remains around the same, then decreases beyond that age.  We can see a large wage gap...
+
+(b) In this part of the problem, we will find a polynomial function of age that best fits the wage data.
+For each polynomial function between p = 0, 1, 2, ...10:
+i. Fit a linear regression to predict wages as a function of age, age2,... agep (you should include
+an intercept as well). Note that p = 0 model is an "intercept-only" model.
+```{r}
+#Part b(i)
+model <- 0
+model[1] <- lm(wage~1, data=Wage)
+for(i in 1:10){
+  model[i+1] <- lm(wage ~ poly(age, i, raw = FALSE), data=Wage)
+}
+model
+```
+
+ii. Use 5-fold cross validation to estimate the test error for this model.
+```{r}
+
+# cut rows into classes and give them a label based on their bin. Then randomize the categorized rows with sample(). We will use a 6 Fold design.
+chunks.poly <- sample(cut(1:3000, breaks = 5, labels = FALSE))
+
+# Define function do.chunk.poly to store residuals
+do.chunk.poly <- function(chunkid, chunkdef, dat, p){
+train <- (chunkdef != chunkid)
+res <- data.frame(degree=integer(), fold=integer(),train.error=double(),val.error=double())
+if (p==0){
+Ytr = dat[train,]$wage # get true response values in training set
+Yvl = dat[-train,]$wage # get true response values in validation set
+lm.wage <- lm(wage~1, data = dat[train,])
+predYtr = predict(lm.wage) # predict training response values
+predYvl = predict(lm.wage,dat[-train,]) # predict validation values
+data.frame(degree = p,fold = chunkid,
+train.error = mean((predYtr - Ytr)^2), # compute and store training errors
+val.error = mean((predYvl - Yvl)^2)) # compute and store validation errors
+} 
+else{
+Ytr = dat[train,]$wage # get true response values in training set
+Yvl = dat[-train,]$wage # get true response values in validation set
+lm.wage <- lm(wage~poly(age, p , raw=FALSE), data = dat[train,])
+predYtr = predict(lm.wage) # predict training response values
+predYvl = predict(lm.wage,dat[-train,]) # predict validation values
+data.frame(degree = p,fold = chunkid,
+train.error = mean((predYtr - Ytr)^2), # compute and store training errors
+val.error = mean((predYvl - Yvl)^2)) # compute and store validation errors
+}
+}
+#Create Data Frame of residual estimates for each level of degree and bind them together.
+err.CV.poly <- data.frame(degree = double(), fold = integer(), train.error = double(), val.error = double())
+err.CV.poly <- ldply(1:5, do.chunk.poly, chunks.poly, Wage,0)
+err.CV.poly <- rbind(err.CV.poly, ldply(1:5, do.chunk.poly, chunks.poly, Wage,1))
+err.CV.poly <- rbind(err.CV.poly, ldply(1:5, do.chunk.poly, chunks.poly, Wage,2))
+err.CV.poly <- rbind(err.CV.poly, ldply(1:5, do.chunk.poly, chunks.poly, Wage,3))
+err.CV.poly <- rbind(err.CV.poly, ldply(1:5, do.chunk.poly, chunks.poly, Wage,4))
+err.CV.poly <- rbind(err.CV.poly, ldply(1:5, do.chunk.poly, chunks.poly, Wage,5))
+err.CV.poly <- rbind(err.CV.poly, ldply(1:5, do.chunk.poly, chunks.poly, Wage,6))
+err.CV.poly <- rbind(err.CV.poly, ldply(1:5, do.chunk.poly, chunks.poly, Wage,7))
+err.CV.poly <- rbind(err.CV.poly, ldply(1:5, do.chunk.poly, chunks.poly, Wage,8))
+err.CV.poly <- rbind(err.CV.poly, ldply(1:5, do.chunk.poly, chunks.poly, Wage,9))
+err.CV.poly <- rbind(err.CV.poly, ldply(1:5, do.chunk.poly, chunks.poly, Wage,10))
+err.CV.poly <- rbind(err.CV.poly, ldply(1:5, do.chunk.poly, chunks.poly, Wage,11))
+err.CV.poly
+```
+
+(c) We plot both the test error and training error (on the same plot) for each of the models estimated above as a function of p. 
+```{r}
+#Part c
+pl.err.CV.poly <- err.CV.poly %>%
+select(degree, train.error, val.error) %>%
+group_by(degree) %>%
+summarise_all(funs(mean))
+pl.err.CV.poly
+ggplot(pl.err.CV.poly, aes(degree)) + 
+  geom_line(aes(y = train.error, color = "Red")) + 
+  geom_line(aes(y = val.error))+
+  ylab('Error')+
+  ggtitle("Errors: Red = Training, Black = Test")
+
+min(pl.err.CV.poly$val.error)
+```
+We observe that as p increases the training error decreases. This is the same for the test error. 
+
+Based on our results we should select the model with p  9 because it has the lowest test error. After degree 9, the test error slightly increases, meaning that models with degrees above 9 are overfitted.

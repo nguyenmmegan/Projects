@@ -4,14 +4,6 @@ author: "Megan Nguyen"
 date: "8/29/2018"
 output: html_document
 ---
----
-title: "Homework 2"
-author: "Megan Nguyen and Hikaru Furuya"
-date: "4/30/2018"
-output:
-  word_document: default
-  pdf_document: default
----
 Spam detection with spambase dataset
 Following packages are needed below:
 ```{r}

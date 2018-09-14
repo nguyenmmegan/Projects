@@ -13,9 +13,11 @@ High concentrations of certain harmful algae in rivers constitute a serious ecol
 With the goal of addressing this prediction problem, several water samples were collected in different European rivers at different times during a period of approximately 1 year. For each water sample, different chemical properties were measured as well as the frequency of occurrence of seven harmful algae. Some other characteristics of the water collection process were also stored, such as the season of the year, the river size, and the river speed.
 
 Goal 
+
 We want to understand how these frequencies are related to certain chemical attributes of water samples as well as other characteristics of the samples (like season of the year, type of river, etc.)
 
 Data Description 
+
 The data set consists of data for 200 water samples and each observation in the available datasets is in effect an aggregation of several water samples collected from the same river over a period of 3 months, during the same season of the year. Each observation contains information on 11 variables. Three of these variables are nominal and describe the season of the year when the water samples to be aggregated were collected, as well as the size and speed of the river in question. The eight remaining variables are values of different chemical parameters measured in the water samples forming the aggregation, namely: Maximum pH value, Minimum value of O2 (oxygen), Mean value of Cl (chloride), Mean value of NO3 (nitrates), Mean value of NH+4 (ammonium), Mean of P O34 (orthophosphate), Mean of total P O4 (phosphate) and Mean of chlorophyll. Associated with each of these parameters are seven frequency numbers of different harmful algae found in the respective water samples. No information is given regarding the names of the algae that were identified. We can start the analysis by loading into R the data from the "algaeBloom.txt" file (the training data, ie. the data that will be used to obtain the predictive models).  To read the data from the file, we issued the following command:
 ```{r}
 library(tidyverse)

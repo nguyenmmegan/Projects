@@ -6,20 +6,26 @@ output:
   word_document: default
   html_document: default
 ---
-Research Questions
-- Why has the price of bitcoin exploded?  How?
-- What are some significant predictors of the market price of bitcoin?
-- What are some external variables that can help predict bitcoin?
-- Which model provides best predictions: Daily, Monthly, Quarterly?
-- MODELS + model anaylsis --> equation, strengths, and weaknesses
-------> BEST MODEL GARCH -- equation, strengths, and weaknesses.  why is works over the others
-- Predictions using chosen model... did it work ? VS predictions from other models -- chi square test
-- site everything
-- ggplot2 anyalysis?
--- Beyond 174
+Betting on Bitcoin: An attempt to predict future prices
+
+Abstract
+
+In this project, I attempt to predict Bitcoin market prices by choosing the best fit model. In order to make the time series stationary, I first transformed the data using a Box-Cox transformation to stabilize the variance and make the time series more normal. After that, I differentiated the time series so remove trend. I analyzed the data to find the best fit model, using ACF and PACF graphs to locate significant lags for the theoretical ARMA(p,d,q) model before performing a AICc test to find the actual best fit model, which was ARMA(6,1,6). I made predictions according to this model.
+
+After finding the model, I discovered that due to its heteroskedaticy, this model is no the best model for predicting Bitcoin prices. The predictions for future Bitcoin prices were inaccurate compared to the actual Bitcoin prices. In order to find a better fit model, I will need to use other financial models that account for volatility that are not normally distributed, such as a GARCH model.
 
 
+Introduction
 
+Bitcoin is an accounting system that records transactions and holds values digitally that utilizes an online open ledger called the blockchain that has become extremely popular within the last few years. It is a cryptocurrency that uses cryptography to secure its transactions, verify the creation of additional units, and verify the transfer of assets. Bitcoin lacks a central server, but instead uses its distributed blockchain maintained by miners, computers that are tasked with maintaining the ledger to verify, update, and make sure it is trustworthy. Because these transactions are maintained by a body of independent computers compelled by an incentive system, there is no need for a bank, getting rid of fees, inefficiencies, corruption, and the risk that comes with centralization. In addition, every Bitcoin is accounted for, so there are no counterfeits. Using this cryptocurrency is easily transferable, anonymous, and is a new system of global, decentralized money- the first currency of the internet that everyone is free to use.
+
+In the past few years, the value of Bitcoin has soared. Because there is a cap of 21 million Bitcoins, the value of each Bitcoin increases as its popularity increases. People find value in Bitcoin because it is hard for the government to tax and trace. In addition, people are willing to accept and trade in Bitcoin, and it acts as an equity investment. In the past, the price of Bitcoin has gone through a number of appreciation and depreciation bubbles and busts that have made it extremely volatile. Despite its unpredictability, a large number of people continue to invest in the cryptocurrency, with many believing its value to continuously increase in the future.
+
+In the project, I analyzed the daily prices of Bitcoin from December 2015 to the present day (https://blockchain.info/charts) using a number of statistical processes and models from R, and found the best fit model. First, I transformed the data using Box-Cox transformation and differentiation. After transforming the time series and fitting it into its best model using ACF and PACF graphs, the Yule-Walker method, and AICc to compare the AIC values with each possible (and calculable) model, I forecasted future Bitcoin price values, and compared them with its actual available current prices.
+
+I found that the ARMA(6,1,6) model I used was not satisfactory. It did not follow a normal distribution, due to its heteroskedatic nature. Although the model was not able to accurately predict the actual values of Bitcoin prices, it is able to paint a picture of Bitcoin prices and its extremely volatile prices.
+
+Initial Analysis
 
 ```{r}
 #install data from 12/5/2015 - 12/2/2017
@@ -41,11 +47,10 @@ data1 <- data1[,-2]
 names(data1) <- c("DATE", "ClosingPrice")
 data1$DATE <- as.Date(data1$DATE)
 ```
+Plotting the time series of the bitcoin prices is strong linear trend, with large variability that increases with the trend. There is no seasonality, as there are no patterns that occur in regular time intervals. In addition, there are sharp changes in its behavior due to the increasing popularity of the cryptocurrency, as well as financial crises within the cryptocurrency market. Because there is a trend, large variability, and sharp changes in behavior, this dataset is not stationary. In order to stabilize the variability, I will perform a Box-Cox Transformation, using the appropriate lambda value. To remove trend from the time series, I will differentiate the data.
 
-Increase in trend
-Variablility changes with time
-no seasonality
-NOT STATIONARY --> perform transformation
+Transformation
+
 ```{r}
 #BOXCOX TRANSFORMATION to make more normal and reduce variability
 library(MASS)
@@ -54,6 +59,7 @@ fit <- lm(bitcoin~t)
 bcTransform <- boxcox(bitcoin~t, plotit = TRUE)
 
 ```
+The Box-Cox plot shows the appropriate lambda value to use when transforming my data. The lambda value found is around -0.7474747. This transformation will stabilize the variation and make the time series more normally distributed.
 
 ```{r}
 #Apply transformation using lambda
@@ -69,7 +75,8 @@ ts.plot(bitcoin.bc, main = "Box-Cox Transformed data", ylab = expression(Y[t]))
 var(bitcoin)
 var(bitcoin.bc)
 ```
-Box-cox transformation reduced variability
+transformed data 𝑌 (the new data with respect to time t), the variability is stabilized throughout
+the data. In the original data, the variability is small at first, but increases greatly over time. In the transformed data, the variability appears more normal and is stabilized with time.
 
 ```{r}
 #ACF of original data
@@ -83,9 +90,8 @@ op <- par(mfrow = c(1,2))
 acf(bitcoin.bc, main = "Box-Cox Transformed ACF", ylim = c(-1,1), xlab = "h", ylab = expression(hat(rho)[X](h)))
 pacf(bitcoin.bc, main = "Box-Cox Transformed PACF", ylim = c(-1,1), xlab = "h", ylab = expression(hat(rho)[X](h)))
 ```
-Highly dependent data
-Process is smooth
-ACF dies out slowly?
+The ACF of the original data and the Box-Cox transformed data shows that the data is highly dependent with each other. It is smooth and gradually decreases, although there is still a strong trend present. The variability of the original data is 3721153, and the variability of the box-cox transformed data is 1.962039e-05. The PACF appears normal.
+
 ```{r}
 #Differencing trend at d = 1
 bitcoin.d1 = diff(bitcoin.bc, 1)
@@ -97,8 +103,10 @@ abline(h = 0,lty = 2)
 library(fUnitRoots)
 unitrootTest(bitcoin.d1)
 ```
-Reject the null that the series has a unit root.  There are no roots, meaning that the series is stationary.
-ARIMA(p,1,q) is appropriate.
+In order to remove trend from the data, the data was differentiated at d = 1. From the transformed time series, there is no longer a strong linear trend. The variability of the differentiated, Box-Cox transformed data is now minimized to 4.2264e-08. When differentiating the time series for d = 2, the variance is 8.01734e-08, which is greater than 4.2264e-08. At d = 2, the time series is over-differentiated, so the time series should be differentiated at d = 1.
+After performing a root test and finding that the roots of the data fall outside the unit circle, it is confirmed that the model is now stationary.
+
+Preliminary model
 
 ```{r}
 #De-trended ACF and PACF at d = 1
@@ -107,8 +115,6 @@ acf(bitcoin.d1, main = "")
 pacf(bitcoin.d1, main = "")
 title("De-trended Time Series for d = 1", line = -1, outer=TRUE)
 ```
-ACF: There are significant ACF values meaning that there are significant MA components present.  The oscillating and decaying ACF values indicate the precesnce of an AR process.
-PACF: There are  significant PACF values after around .. this signifies a large p value for the AR model.  how to fit best one ?
 ```{r}
 #Variance at d=1
 var(bitcoin.d1)
@@ -131,13 +137,13 @@ pacf_lags <- pacf_d1$lag[pacf_lag_id]
 pacf_lags
 
 ```
-Implies no significant ACF values after lag 85 (testing only for 100)... MA(85) model
-Implies no significant PACF values after lag 85 (testing only for 100)... AR(85) model
-Quite large, difficult to calculate for coefficients for arma.  
-Sticking with ARMA(5,1,5) model.
+With the variability stabilized, and the trend removed, the ACF and PACF reflect a stationary time series. There are significant ACF values, meaning that there are significant MA (moving average) components present. The oscillating and decaying ACF values indicate the presence of an AR (autoregressive) process. The significant lags that fall outside the 95% confidence interval are 5, 9, 25, 41, and 85 when testing for the first 100 lags. This means that after lag 85, there are no significant ACF values, so the theoretical model would be MA(85).
 
+From the PACF, the significant lags that fall outside the 95% confidence interval are 5, 25, 41, and 85. This means that after lag 85, there are no significant PACF values, so AR(85) would be
+ 
+the best theoretical AR model. However, these values are too large to calculate for an ARMA (autoregressive moving-average) model in R, so the best theoretical preliminary model would be ARMA(5,1,5). The AIC value for this model is 8894.76.
 
-
+Fitting Models
 
 
 ```{r}
@@ -149,8 +155,7 @@ fit_ar
 fit_ma<- sma(bitcoin.d1)
 fit_ma
 ```
-Estimated AR(6) and MA(200)
-Fewer orders are better for parsimonious representation, that is they represent MA(inf) and AR(inf)
+When performing the Yule-Walker method, the estimated order for the AR model is 6, and when performing a smooth moving average function, the estimated order for the MA model is 200. Because this model, is difficult to compute using R, we will stick with the p = 6.
 
 ```{r}
 library(qpcR)
@@ -171,10 +176,10 @@ aiccs1
 min(aiccs1)
 
 ```
-ARIMA(6,1,6) model
-Close to prediction 
+Performing the AIC(c) test on the data, we can see that the best fit model for the time series is ARMA(6,1,6), with a minimum AIC value of -10285.03. This aligns with the results we got from the Yule-Walked Method, which found that the best p order is 6. Because the orders in the ARMA(6,1,6) model are computable and have the least AIC value, this is the best fit model. The equation for this model is:
+𝑋𝑡 = 0.0053𝑋𝑡−1 − 0.309𝑋𝑡−2 + 0.0668𝑋𝑡−3 + 0.2698𝑋𝑡−4 + 0.0751𝑋𝑡−5 + 0.8741𝑋𝑡−6 + 𝑍𝑡 + 0.1009𝑍𝑡−1 + 0.4457𝑍𝑡−2 + 0.0059𝑍𝑡−3 − 0.3418𝑍𝑡−4 − 0.0418𝑍𝑡−5 − 0.9195𝑍𝑡−6
 
-
+Residual Analysis of Fitted Model
 ```{r}
 #Residual analysis on ARIMA(6,1,6)
 fit <- arima(bitcoin, order = c(6,1,6), method = "ML")
@@ -185,20 +190,16 @@ fit
 ```{r}
 Box.test(residuals(fit), type = "Ljung")
 ```
-Passed the test
 
 ```{r}
 #normality test
 shapiro.test(residuals(fit))
 ```
-Failed
+
 
 ```{r}
 ts.plot(residuals(fit),main = "Fitted Residuals")
 ```
-increasing variability
-
-
 
 ```{r}
 par(mfrow=c(1,2),oma=c(0,0,2,0))
@@ -218,15 +219,11 @@ qqline(residuals(fit),col ="blue")
 title("Fitted Residuals Diagnostics", outer=TRUE)
 par(op)
 ```
-Model is not satisfactory
-Violates normality assumptions
-White Noise with heavy tails
-And didn't pass Shapiro-Wilk test
+Plotting the residuals of the model, we can see that within the past year, the data is extremely volatile. The model is not satisfactory. From the Normal Q-Q plot, it violates the normality assumption with its heavy tails that follow a White Noise distribution. And although it passed the Box-Ljung test, meaning that the data is independently distributed, the time series did not pass the Shapiro-Wilk test, meaning that the data is not normal, which can be seen in the Normal Q-Q plot. Although we were able to find the best fitted ARMA model, it is not the best model for this dataset. This dataset should be fitted with other models that do not follow a Gaussian distribution, such as the GARCH model, that fits better with financial data that are hetereoskedatic.
 
-Need to choose a better model.  One that is not Gaussian!
-GARCH!
+Forecasting
 
-
+Although the ARMA(6,1,6) model is not satisfactory, we can still attempt to forecast future bitcoin prices.
 
 ```{r}
 #Predictions for the next month
@@ -235,10 +232,7 @@ ts.plot(bitcoin, xlim=c(0, 760), ylim = c(0, 20000), xlab = "Days since December
 points(729:759,mypred$pred)
 lines(729:759,mypred$pred+1.96*mypred$se,lty=2, col = "red")
 lines(729:759,mypred$pred-1.96*mypred$se,lty=2, col = "red")
-
-
 ```
-
 
 ```{r}
 #Predictions for the next year
@@ -250,8 +244,6 @@ lines(729:1093,mypred$pred-1.96*mypred$se,lty=2, col = "red")
 
 ```
 
-
-
 ```{r}
 #Predictions for the next 3 years
 mypred <- predict(fit, n.ahead=1095)
@@ -260,31 +252,16 @@ points(729:1823,mypred$pred)
 lines(729:1823,mypred$pred+1.96*mypred$se,lty=2, col = "red")
 lines(729:1823,mypred$pred-1.96*mypred$se,lty=2, col = "red")
 ```
+It is clear that the predicted data values (black) are extremely inaccurate with the actual results (red). Again, this is due to the highly volatile nature of the Bitcoin prices. This supports the fact that the ARMA(6,1,6) model is not a good fit for the data.
+ 
+Conclusion
 
+In conclusion, using the historical prices of Bitcoin, I created an ARMA(6,1,6) model that best- fit the data after applying a Box-Cox transformation and differentiation to stabilize variability and removing trend:
+𝑋 =0.0053𝑋 −0.309𝑋 +0.0668𝑋 +0.2698𝑋 +0.0751𝑋 +0.8741𝑋
+𝑡 𝑡−1 𝑡−2 𝑡−3 𝑡−4 𝑡−5 𝑡−6
++ 𝑍𝑡 + 0.1009𝑍𝑡−1 + 0.4457𝑍𝑡−2 + 0.0059𝑍𝑡−3 − 0.3418𝑍𝑡−4 − 0.0418𝑍𝑡−5
+− 0.9195𝑍𝑡−6
 
-```{r}
-#GARCH fitting
-library(rugarch)
-spec <- ugarchspec()
-garch_fit1 <- ugarchfit(data = bitcoin.d1, spec = spec)
-garch_fit1
-```
-ARCH lag[3] test results has significant value
-Sign Bias test: Negative sign bias has a significant model
+This model proved to not be significant or accurate according to the Shapiro-Wilk test and the actual vs. predicted data. This is due to the highly volatile nature of the data. Because this financial dataset is hetereoskedatic, it should be fitted to a GARCH model in order to capture its volatility. Although this model is inaccurate, and is not the best fit model, it is still able to use historical data to create possible predictions for Bitcoin prices in the future.
 
-
-```{r}
-
-##PLOT USING GGPLOT2
-
-#Using ggplot2
-data$DATETIME <- as.character(data$DATETIME)
-data1 <- separate(data, "DATETIME", into = c("DATE", "TIME"), sep = "[[:space:]]", convert = TRUE)
-data1 <- data1[,-2]
-names(data1) <- c("DATE", "ClosingPrice")
-data1$DATE <- as.Date(data1$DATE)
-
-#Using forecast package
-
-```
 

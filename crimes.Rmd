@@ -1,0 +1,100 @@
+---
+title: "crimes"
+author: "Megan Nguyen"
+date: "9/17/2018"
+output: html_document
+---
+```{r}
+#install packages in order to load data from online
+install.packages(“data.table”)  
+#load data.table
+library(data.table)
+#load data into r
+crimes_data <- fread('http://archive.ics.uci.edu/ml/machine-learning-databases/communities/communities.data')
+#attach data
+attach(crimes_data)
+#Give structure of data
+str(crimes_data)
+```
+
+```{r}
+#Grab vectors we will use for data
+crimes_data <- data.frame(V18, V34, V36, V38, V49, V83, V128)
+#Rename vectors
+names(crimes_data) <- c("medIncome", "pctPopUnderPov", "pctNotHSGrad", "pctUnemployed", "pctFam2Par", "pctHousNoPhone", “violentCrimesPerPop”)
+
+```
+
+```{r}
+#install car
+install.packages(“car”)
+library(“car”)
+#matrix with scatterplots for response against all predictors
+matrix <- scatterplotMatrix(~violentCrimesPerPop + medIncome + pctPopUnderPov + pctNotHSGrad + pctUnemployed + pctFam2Par + pctHousNoPhone)
+#fitted linear regression model
+crimes_lm <- lm(violentCrimesPerPop ~ medIncome + pctPopUnderPov + pctNotHSGrad + pctUnemployed + pctFam2Par + pctHousNoPhone)
+plot(crimes_lm)
+summary(crimes_lm)
+
+```
+
+
+```{r}
+#anova table 
+anova(crimes_lm)
+
+```
+
+```{r}
+#Transformations
+##violates model diagnostics of linearity, constant variance, and normality
+> crimes_1 <- lm(violentCrimesPerPop ~ medIncome)
+> crimes_2 <- lm(violentCrimesPerPop ~ pctPopUnderPov)
+> crimes_3 <- lm(violentCrimesPerPop ~ pctNotHSGrad)
+> crimes_4 <- lm(violentCrimesPerPop ~ pctUnemployed)
+> crimes_5 <- lm(violentCrimesPerPop ~ pctFam2Par)
+> crimes_6 <- lm(violentCrimesPerPop ~ pctHousNoPhone)
+#Y’s are not strictly positive, so add a constant 
+> crimes_10 <- lm(violentCrimesPerPop + 0.01 ~ medIncome)
+> crimes_20 <- lm(violentCrimesPerPop + 0.01 ~ pctPopUnderPov)
+> crimes_30 <- lm(violentCrimesPerPop + 0.01 ~ pctNotHSGrad)
+> crimes_40 <- lm(violentCrimesPerPop + 0.01 ~ pctUnemployed)
+> crimes_50 <- lm(violentCrimesPerPop + 0.01 ~ pctFam2Par)
+> crimes_60 <- lm(violentCrimesPerPop + 0.01 ~ pctHousNoPhone)
+boxCox()
+```
+
+```{r}
+#TRANSFORMATION OF BEST FIT MODEL
+matrix1 <- scatterplotMatrix(~log(violentCrimesPerPop + 0.01) + medIncome + pctPopUnderPov + pctNotHSGrad + pctUnemployed + pctFam2Par + pctHousNoPhone)
+crimes_lm_log <- lm(log(violentCrimesPerPop + 0.01) ~ medIncome + pctPopUnderPov + pctNotHSGrad + pctUnemployed + pctFam2Par + pctHousNoPhone)
+plot(crimes_lm_log)
+summary(crimes_lm_log)
+
+```
+
+```{r}
+##AV PLOTS
+avPlot(crimes_lm_log)
+##OUTLIERS
+
+crimes_lm_log_new <- lm(log(violentCrimesPerPop + 0.01) ~ medIncome + pctPopUnderPov + pctNotHSGrad + pctUnemployed + pctFam2Par + pctHousNoPhone, subset = -c(376, 774, 1231, 1666, 862))
+summary(crimes_lm_log_new)
+
+```
+
+```{r}
+##AIC
+#forward selection
+crimes0 <- lm(log(violentCrimesPerPop + 0.01) ~ 1)
+crimes0.fw <- step(crimes0, scope=c(upper = ~ medIncome + pctPopUnderPov + pctNotHSGrad + pctUnemployed + pctFam2Par + pctHousNoPhone), direction='forward')
+
+```
+
+```{r}
+## The best fit submodel is log(violentCrimesPerPop + 0.01) ~ pctFam2Par + pctNotHSGrad + medIncome + pctUnemployed
+#backward selection
+crimes_lm_log.bw <- step(crimes_lm_log, scope = c(lower = ~ 1), direction =  'backward')
+
+```
+

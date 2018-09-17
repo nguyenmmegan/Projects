@@ -1,0 +1,290 @@
+---
+title: "bitcoin"
+author: "Megan Nguyen"
+date: "12/3/2017"
+output:
+  word_document: default
+  html_document: default
+---
+Research Questions
+- Why has the price of bitcoin exploded?  How?
+- What are some significant predictors of the market price of bitcoin?
+- What are some external variables that can help predict bitcoin?
+- Which model provides best predictions: Daily, Monthly, Quarterly?
+- MODELS + model anaylsis --> equation, strengths, and weaknesses
+------> BEST MODEL GARCH -- equation, strengths, and weaknesses.  why is works over the others
+- Predictions using chosen model... did it work ? VS predictions from other models -- chi square test
+- site everything
+- ggplot2 anyalysis?
+-- Beyond 174
+
+
+
+
+```{r}
+#install data from 12/5/2015 - 12/2/2017
+
+data <- read.csv("/Users/megannguyen/Desktop/Datasets/BitcoinPrice_2015-2017.csv")
+names(data) <- c("DATETIME", "Closing Market Price")
+head(data)
+```
+
+```{r}
+bitcoin <- ts(data[,2]) # R graph
+ts.plot(bitcoin, ylab = "Bitcoin Closing Market Price in $", xlab = "Time in Days", main = "Bitcoin Price Since December 6, 2015")
+
+#Using ggplot2
+library(tidyr)
+data$DATETIME <- as.character(data$DATETIME)
+data1 <- separate(data, "DATETIME", into = c("DATE", "TIME"), sep = "[[:space:]]", convert = TRUE)
+data1 <- data1[,-2]
+names(data1) <- c("DATE", "ClosingPrice")
+data1$DATE <- as.Date(data1$DATE)
+```
+
+Increase in trend
+Variablility changes with time
+no seasonality
+NOT STATIONARY --> perform transformation
+```{r}
+#BOXCOX TRANSFORMATION to make more normal and reduce variability
+library(MASS)
+t <- 1:length(bitcoin)
+fit <- lm(bitcoin~t)
+bcTransform <- boxcox(bitcoin~t, plotit = TRUE)
+
+```
+
+```{r}
+#Apply transformation using lambda
+lambda = bcTransform$x[which(bcTransform$y == max(bcTransform$y))]
+bitcoin.bc <- (1/lambda)*(bitcoin^lambda-1)
+
+#Plot
+op <- par(mfrow = c(1,2))
+ts.plot(bitcoin, main = "Original data", ylab = expression(X[t]))
+ts.plot(bitcoin.bc, main = "Box-Cox Transformed data", ylab = expression(Y[t]))
+```
+```{r}
+var(bitcoin)
+var(bitcoin.bc)
+```
+Box-cox transformation reduced variability
+
+```{r}
+#ACF of original data
+op <- par(mfrow = c(1,2))
+acf(bitcoin, main = "Original ACF", ylim = c(-1,1), xlab = "h", ylab = expression(hat(rho)[X](h)))
+pacf(bitcoin, main = "Original PACF", ylim = c(-1,1), xlab = "h", ylab = expression(hat(rho)[X](h)))
+```
+```{r}
+#ACF of transformed data
+op <- par(mfrow = c(1,2))
+acf(bitcoin.bc, main = "Box-Cox Transformed ACF", ylim = c(-1,1), xlab = "h", ylab = expression(hat(rho)[X](h)))
+pacf(bitcoin.bc, main = "Box-Cox Transformed PACF", ylim = c(-1,1), xlab = "h", ylab = expression(hat(rho)[X](h)))
+```
+Highly dependent data
+Process is smooth
+ACF dies out slowly?
+```{r}
+#Differencing trend at d = 1
+bitcoin.d1 = diff(bitcoin.bc, 1)
+plot(bitcoin.d1,main = "De-trended Time Series for d = 1",ylab = expression(nabla[1]~Y[t]))
+abline(h = 0,lty = 2)
+```
+```{r}
+#Perform unit root test to see if stationary
+library(fUnitRoots)
+unitrootTest(bitcoin.d1)
+```
+Reject the null that the series has a unit root.  There are no roots, meaning that the series is stationary.
+ARIMA(p,1,q) is appropriate.
+
+```{r}
+#De-trended ACF and PACF at d = 1
+op = par(mfrow = c(1,2))
+acf(bitcoin.d1, main = "")
+pacf(bitcoin.d1, main = "")
+title("De-trended Time Series for d = 1", line = -1, outer=TRUE)
+```
+ACF: There are significant ACF values meaning that there are significant MA components present.  The oscillating and decaying ACF values indicate the precesnce of an AR process.
+PACF: There are  significant PACF values after around .. this signifies a large p value for the AR model.  how to fit best one ?
+```{r}
+#Variance at d=1
+var(bitcoin.d1)
+
+#ACf and PACF values
+acf_d1 <- acf(bitcoin.d1, lag.max = 100, plot = FALSE)
+pacf_d1 <- pacf(bitcoin.d1, lag.max = 100, plot = FALSE)
+
+#CI Value
+ci <- qnorm((1 + 0.95)/2)/sqrt(728)
+
+#Significant ACF values .. MA presence... that determines MA model order ... only testing for 100 lags
+acf_lag_id <- which(abs(acf_d1$acf) > ci)
+acf_lags <- acf_d1$lag[acf_lag_id]
+acf_lags
+
+#Significant PACF values .. that determines AR model order ... only for 100 lags
+pacf_lag_id <- which(abs(pacf_d1$acf) > ci)
+pacf_lags <- pacf_d1$lag[pacf_lag_id]
+pacf_lags
+
+```
+Implies no significant ACF values after lag 85 (testing only for 100)... MA(85) model
+Implies no significant PACF values after lag 85 (testing only for 100)... AR(85) model
+Quite large, difficult to calculate for coefficients for arma.  
+Sticking with ARMA(5,1,5) model.
+
+
+
+
+
+```{r}
+#
+#Yule Walker method
+library(smooth)
+fit_ar <- ar(bitcoin.d1, method="yule-walker")
+fit_ar
+fit_ma<- sma(bitcoin.d1)
+fit_ma
+```
+Estimated AR(6) and MA(200)
+Fewer orders are better for parsimonious representation, that is they represent MA(inf) and AR(inf)
+
+```{r}
+library(qpcR)
+aiccs1 <- matrix(NA, nr = 10, nc = 10)
+dimnames(aiccs1) = list(p=0:9, q=0:9)
+for(p in 0:9)
+{
+for(q in 0:9)
+{
+aiccs1[p+1,q+1] = AICc(arima(bitcoin.d1, order = c(p,0,q), method="ML", optim.control = list(maxit = 800)))
+}
+}
+aiccs1
+
+```
+
+```{r}
+min(aiccs1)
+
+```
+ARIMA(6,1,6) model
+Close to prediction 
+
+
+```{r}
+#Residual analysis on ARIMA(6,1,6)
+fit <- arima(bitcoin, order = c(6,1,6), method = "ML")
+fit
+```
+
+
+```{r}
+Box.test(residuals(fit), type = "Ljung")
+```
+Passed the test
+
+```{r}
+#normality test
+shapiro.test(residuals(fit))
+```
+Failed
+
+```{r}
+ts.plot(residuals(fit),main = "Fitted Residuals")
+```
+increasing variability
+
+
+
+```{r}
+par(mfrow=c(1,2),oma=c(0,0,2,0))
+# Plot diagnostics of residuals
+op <- par(mfrow=c(2,2))
+# acf
+acf(residuals(fit), lag.max = 800, main = "Autocorrelation")
+# pacf
+pacf(residuals(fit), lag.max = 800, main = "Partial Autocorrelation")
+5
+# Histogram
+hist(residuals(fit),main = "Histogram")
+# q-q plot
+qqnorm(residuals(fit))
+qqline(residuals(fit),col ="blue")
+# Add overall title
+title("Fitted Residuals Diagnostics", outer=TRUE)
+par(op)
+```
+Model is not satisfactory
+Violates normality assumptions
+White Noise with heavy tails
+And didn't pass Shapiro-Wilk test
+
+Need to choose a better model.  One that is not Gaussian!
+GARCH!
+
+
+
+```{r}
+#Predictions for the next month
+mypred <- predict(fit, n.ahead=31)
+ts.plot(bitcoin, xlim=c(0, 760), ylim = c(0, 20000), xlab = "Days since December 5, 2015", ylab = "Bitcoin $USD Market Price", main = "Betting on Bitcoin")
+points(729:759,mypred$pred)
+lines(729:759,mypred$pred+1.96*mypred$se,lty=2, col = "red")
+lines(729:759,mypred$pred-1.96*mypred$se,lty=2, col = "red")
+
+
+```
+
+
+```{r}
+#Predictions for the next year
+mypred <- predict(fit, n.ahead=365)
+ts.plot(bitcoin, xlim=c(0, 1100), ylim = c(0, 50000), xlab = "Days since December 5, 2015", ylab = "Bitcoin $USD Market Price", main = "Betting on Bitcoin")
+points(729:1093,mypred$pred)
+lines(729:1093,mypred$pred+1.96*mypred$se,lty=2, col = "red")
+lines(729:1093,mypred$pred-1.96*mypred$se,lty=2, col = "red")
+
+```
+
+
+
+```{r}
+#Predictions for the next 3 years
+mypred <- predict(fit, n.ahead=1095)
+ts.plot(bitcoin, xlim=c(0, 1850), ylim = c(0, 120000), xlab = "Days since December 5, 2015", ylab = "Bitcoin $USD Market Price", main = "Betting on Bitcoin: 95% Confidence Interval")
+points(729:1823,mypred$pred)
+lines(729:1823,mypred$pred+1.96*mypred$se,lty=2, col = "red")
+lines(729:1823,mypred$pred-1.96*mypred$se,lty=2, col = "red")
+```
+
+
+```{r}
+#GARCH fitting
+library(rugarch)
+spec <- ugarchspec()
+garch_fit1 <- ugarchfit(data = bitcoin.d1, spec = spec)
+garch_fit1
+```
+ARCH lag[3] test results has significant value
+Sign Bias test: Negative sign bias has a significant model
+
+
+```{r}
+
+##PLOT USING GGPLOT2
+
+#Using ggplot2
+data$DATETIME <- as.character(data$DATETIME)
+data1 <- separate(data, "DATETIME", into = c("DATE", "TIME"), sep = "[[:space:]]", convert = TRUE)
+data1 <- data1[,-2]
+names(data1) <- c("DATE", "ClosingPrice")
+data1$DATE <- as.Date(data1$DATE)
+
+#Using forecast package
+
+```
+

@@ -5,11 +5,6 @@ date: "8/30/2018"
 output: html_document
 ---
 
-In this homework, the problems will be more computationally intensive than previous problems in this class. You
-should expect the code for some problems to take a couple of minutes to complete. Re-knitting your file can take a
-long time so you should consider using cache=TRUE option in R chunks that involve code which takes a while to run.
-Another option would be to work some of the more computationally demanding problems in separate Rmd. Please
-load the following packagesfor this homework:
 ```{r}
 library(tidyverse)
 library(tree)
@@ -20,21 +15,25 @@ library(e1071)
 library(imager)
 ```
 
-1. Fundamentals of the bootstrap
+Fundamentals of the bootstrap
+
 In the first part of this problem we will explore the fact that approximately 1/3 of the observations in a bootstrap
 sample are out-of-bag.
+
 a) Given a sample of size n, what is the probability that any observation j is not in in a bootstrap sample? Express
 your answer as a function of n.
 $$(1 - \frac{1}{n})^n$$
+
 b) Compute the above probability for n = 1000
 $$(1 - \frac{1}{1000})^1000$$
 ```{r}
 #Probability for n=1000
 (1-(1/1000))^1000
 ```
-c) Verify that your calculation is reasonable by resampling the numbers 1 to 1000 with replace and printing the
-number of missing observations. Hint: use the unique and length functions to identify how many unique
-observations are in the sample.
+
+c) We verify that your calculation is reasonable by resampling the numbers 1 to 1000 with replace and printing the
+number of missing observations. 
+
 ```{r}
 #Probabilities for n = 1:1000
 prob <- c()
@@ -50,6 +49,7 @@ unique
 Each value is unique.  Almost all of the values are around 0.367 which is equal to the same probability calculated for n = 1000.
 
 Here we’ll use the bootstrap to compute uncertainty about a parameter of interest.
+
 d) By November 18, 2017, an NBA basketball player, Robert Covington, had made 50 out of 101 three point shot
 attempts. The regular season began on October 17 and ended on April 11. At that time, his three point field
 goal percentage, 0.495, was the best in the league and would have ranked in the 10 ten all time for single season
@@ -59,6 +59,7 @@ Use 1000 bootstrap samples to plot a histogram of those values. Compute the 95% 
 for Robert Covington’s “true” FG% using the quantile function in R. Print the endpoints of this interval.
 Why would you expect that his end-of-season field goal percentage was lower than his percentage on 11/18?
 Your answer should reference a well-known statistical phenomenon.
+
 ```{r}
 #Sequence
 fg <- c(rep.int(1, 50), rep.int(0, 51))
@@ -79,9 +80,9 @@ quantile(x, c(0.025,0.975))
 ```
 We would expect the average to go down due to the law of large numbers.
 
-2. Eigenfaces
-In this problem we will use PCA to explore variation in images of faces. Load the data saved in faces_array.RData
-with the load function. This will load a 100 x 100 x 1000 array of data. An array is a generalization of a matrix to
+Eigenfaces
+
+We will use PCA to explore variation in images of faces. Load the data saved in faces_array.RData. This will load a 100 x 100 x 1000 array of data. An array is a generalization of a matrix to
 more than 2 dimensions. In this example, the first two dimensions index the pixels in a 100 x 100 black and white
 image of a face. The last dimension is the index for one of 1000 face images. The faces used in this example are from
 1000 images scraped from the internet. See https://cyberextruder.com/face-matching-data-set-download/ for more

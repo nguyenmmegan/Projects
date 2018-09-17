@@ -4,6 +4,24 @@ author: "Megan Nguyen"
 date: "9/17/2018"
 output: html_document
 ---
+The Relationship Between Socio-Economic Factors and Violent Crimes in Communities
+
+Abstract
+
+This goal of this regression analysis is to show the relationship of a community’s socio-economic factors on the number of violent crimes committed.  These socio-economic factors include a community’s median income, its percentage of people living under the poverty line, its percentage of people who did not graduate high school, its percentage of people that are unemployed, its percentage of families with kids that have two parents, and its percentage of houses without phones (this was rare in 1990).  It answers a number of questions on the relationships between education, employment, income level, and family dynamics with violent crimes.  The results of this analysis show that a community’s percentage of people living under poverty, the percentage of houses without phones, and its percentage of unemployed people have little to no correlation to its number of violent crimes.  In fact, the strongest predictor of violent crimes is the percentage of families with two parents.  Communities with a low percentage of families with two parents tended to have more violent crimes, while communities with a higher percentage of families with two parents tended to have less violent crimes.
+
+Problem and Motivation
+
+Violent crimes are inevitable in every community.  In order to decrease this number, studies have been made to find out what factors may influence the number of violent crimes that occur.  There are countless factors that could influence violent crimes.  However, many people have an understanding and belief that violent crimes occur in communities with high poverty levels, lacking educational systems, and higher unemployment rates, which result in lower median incomes.  Violent crimes are also believed to stem from the household- families with both parents are believed to be more stable than families with just one parent.  This project’s goal is to prove whether or not these socio-economic factors are significantly correlated with the violent crimes in a community.  Proving this will show the true effects of violent crimes, which will allow social workers and governments to decrease the number of crimes by targeting these certain factors that cause them.  Knowing what parts of the community to improve can not only decrease the number of violent crimes that occur, but also ultimately benefit the community in the long run, since these problems may also be related to other socio-economic problems in communities.
+
+Question of Interest
+
+Are a community’s median income, its percentage of people living under the poverty line, its percentage of people who did not graduate high school, its percentage of people that are unemployed, its percentage of families with kids that have two parents, and its percentage of houses without phones correlated with the number of violent crimes?
+
+Data
+
+The data comes from UC Irvine’s Machine Learning Repository, which provides a number of data sets for analysis.  The data set is a subset of “Communities and Crime Data Set” which contains a total of 128 attributes.  Seven of those attributes are used to analyze 1994 communities in the United States.  The number of violent crimes include murder, rape, robbery, and assault.  Because there was some controversy in some states concerning the counting of rapes, those cities are not included in the data set. 
+
 ```{r}
 #install packages in order to load data from online
 install.packages(“data.table”)  
@@ -25,6 +43,15 @@ names(crimes_data) <- c("medIncome", "pctPopUnderPov", "pctNotHSGrad", "pctUnemp
 
 ```
 
+Regression Methods
+
+In order to find the correlation between the socio-economics regressors and the response violentCrimesPerPop, the linear regression was used to find a model that fit the data set.  The t-test was used for the hypothesis test in order to analyze the significance of each regressor, and the standard deviations of each were also calculated.  The coefficient of determination was used to determine the percentage of variability accounted for in the models.  The Box-Cox method is used to find a suitable transformation of the model.  Furthermore, the forward and backward selection methods were used to compute AIC values in order to find the best fit submodel, as well as the active regressors in the model.
+
+
+Regression Analysis, Results and Interpretation
+
+Using the six regressors to predict the response comes up with the linear regression model violentCrimesPerPop = medIncome + pctPopUnderPov + pctNotHSGrad + pctUnemployed + pctFam2Par + pctHousNoPhone.  The matrix for the model shows that there is a large variance in each of the models with violentCrimesPerPop against the regressors.  In addition, some graphs, such as violentCrimesPerPop against medIncome, the curve proves that a straight line mean function does not seem plausible. 
+
 ```{r}
 #install car
 install.packages(“car”)
@@ -37,13 +64,14 @@ plot(crimes_lm)
 summary(crimes_lm)
 
 ```
-
-
 ```{r}
 #anova table 
 anova(crimes_lm)
 
 ```
+When plotting the fitted line model for the data set, it can be seen that there are model diagnostic violations.  The residuals vs fitted plot shows a slight curved line in the model which violates the linearity assumption.  The normal Q-Q plot shows heavy tails in the model, especially on the right side, violating the normality assumption.  The scale-location plot shows a non-constant variance in the model.
+
+In order to fit a model for the data that is linear, normal, and independent with a constant variance, the model must be transformed.  In order to transform the model, the value 0.01 will be added to violentCrimesPerPop in order to make each predicted value to be positive.  Using the Box-Cox transformation, it can be seen that the maximum values for each of the models for violentCrimesPerPop against the regressors is around 0, so the log transformation of violentCrimesPerPop is best for this data.  Thus, the new fitted model for the data is log(violentCrimesPerPop + 0.01) = medIncome + pctPopUnderPov + pctNotHSGrad + pctUnemployed + pctFam2Par + pctHousNoPhone.  
 
 ```{r}
 #Transformations
@@ -72,6 +100,16 @@ plot(crimes_lm_log)
 summary(crimes_lm_log)
 
 ```
+This new fitted model shows a slightly more linear model, although the graph still has a curved pattern to it.  Its Q-Q plot shows a normal distribution with few outliers at the tails, and the scale-location plot shows an average constant variance in the data.
+
+The intercept for this new model is -0.34, the percent change of violent crimes per population when all other predictors are 0. This is not a reasonable prediction since there will be no cases where all predictor values are 0.  
+
+The slope for median Income is 0.72, meaning that when the median income increases by one unit, the percent change in violent crimes per population is 0.72%.  When the percent of the population under poverty increases by one unit, the violent crimes decrease by 0.065%.  Then the percent of peple that did not graduate high school increases by 1 unit, the expected amount of violent crimes will increase by 0.6%.  When the percent of unemployed people increases by one unit, the expected amount of violent crimes will increase by 0.25%.  When the percent of families with two parents increases by one unit, the expected amount of violent crimes will decrease by 3.42%.  And when the percent of houses without a phone increases by one unit, the expected percent change in violent crimes will be 0.14%.  
+
+Performing a hypothesis test for the intercept and slopes will show if the values are significant to the model.  The null hypothesis states that the slope is insignificant, with the slope equal to zero, while the alternative hypothesis states that the slope is significant, with the slope not equal to zero.  The p-values of the intercept and the slopes of the medIncome, pctNotHSGrad, and pctFam2Par regressors all less than the significance p-value of 0.05.  This means that the slopes of median Income, percent of people that did not graduate high school, and percent of families with two parents reject the null hypothesis and are significant to the model.  The slopes of pctPopUnderPov, pctUnemployed, and pctHousNoPhone have p-values greater than 0.05, failing to reject the null hypothesis, so their slopes are insignificant to the model.  Although pctUnemployed has a rather large p-value of 0.067, it is barely greater than 0.05 meaning it could still have some significance to the model.  
+
+The standard errors for the intercept and regressors are all small at around 0.1, and the residual standard error at 0.6729.  Because the intercept and slopes for medIncome, pctNotHsGrad, pctFam2Par are very large compared to their standard errors, they are both very statistically significant, so the violent crimes per population is linearly related to a community’s median income, percent of people who did not graduate from high school, and percentage of families with two parents.  The coefficient of determination for the model is 0.5295, meaning that 52.95% of the variability in violent crimes per population can be explained by the predictors.  This is a moderately strong relationship.  The ANOVA table shows that around 900 community variabilities are unexplained by the model.
+
 
 ```{r}
 ##AV PLOTS
@@ -97,4 +135,19 @@ crimes0.fw <- step(crimes0, scope=c(upper = ~ medIncome + pctPopUnderPov + pctNo
 crimes_lm_log.bw <- step(crimes_lm_log, scope = c(lower = ~ 1), direction =  'backward')
 
 ```
+
+The Added-Variable plots of the regressors show that of all regressors, pctFam2Par has the strongest correlation with violentCrimesPerPop, with all other regressors controlled.  For the other predictors, they are individually not useful when all others are controlled.
+
+To test for the best submodel for the data, an information criteria (AIC) was used to measure the model complexities and goodness of fits.  Using the forward selection and backward selection methods, the best fit submodel is log(violentCrimesPerPop + 0.01) ~ pctFam2Par + pctNotHSGrad + medIncome + pctUnemployed.  From the hypothesis test above, it can be proven that the slopes of pctPopUnderPov and pctHousNoPhone have little to no significance with violentCrimesPerPop.  This submodel has a residual standard error of 0.6728 and a coefficient of determination value of 0.5291 meaning that 52.91% of the variability in violent crimes per population can be explained by the predictors.  This is a moderately strong relationship, and is around the same coefficient of determination as the full model, proving the insignificance of pctPopUnderPov and pctHousNoPhone.  Although the submodel contains four predictors that all correlate to violentCrimesPerPop, the main active predictor appears to be pctFam2Par, which has the greatest correlation with violentCrimesPerPop, which can also be seen in the hypothesis test above.
+
+The Q-Q plot of the full model shows a number of outliers that have high leverages in the data, which can also be represented by their large Cook’s Distance.  Some of these outliers are values 376, 774, 1231, 1666, and 862.  When removed, the residual standard error decreases from 0.6729 to 0.661, and the coefficient of determination increases from 0.5295 to 0.542, proving the high leverage and influence these points had on the data set.  These outliers most likely came from communities with extreme conditions.
+
+Conclusion
+
+In conclusion, the analysis of the data shows the correlation of socio-economic factors on violent crimes committed in a community.  The median income, percentage of people that did not graduate high school, and the percentage of unemployed people in a community are correlated with the number of violent crimes committed.  The percentage of families with two parents had the greatest correlation with the number of violent crimes committed, while the percentage of people living under poverty and the percentage of houses with no phones had little to no correlation with the number of violent crimes committed in a community.  This proves the violent crimes are not heavily influenced by a community’s poverty level or education system.  Rather, it is heavily influenced by family dynamics.  This means that violent crimes can occur in communities regardless of economic levels.  This proves that the number of parents in a family, whether it be two, one, or zero, strongly affects the number of crimes that occur.  Communities with a lower percentage of families headed by two people tended to have more violent crimes. Communities with a higher percentage of families headed by two people tended to have less violent crimes.  In order to decrease the number of violent crimes in a city, families should be headed by two parents in order to have a more stable household.
+
+The results of the data are semi-accurate, but should not be completely trusted since only six predictors were chosen out of 128.  A number of other factors can have a much greater influence than the percentage of families headed by two parents.  In order to find a more accurate correlation between violent crimes in households and socio-economic factors, an analysis should be made on all 128 predictors and their relationships with each other.
+
+
+
 
